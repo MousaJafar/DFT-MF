@@ -1,0 +1,723 @@
+source code 
+#------------------------------------------------------------------------
+#       Start the Second Code Extract All Frames from Video:
+#------------------------------------------------------------------------
+import cv2
+import math
+import os
+from openpyxl import Workbook
+from timeit import default_timer as timer
+import time
+book = Workbook()
+sheet = book.active
+sheetCount=1
+M=0
+i=1
+while(i <=12):
+    start= timer()              
+    videoFile = "C:/Users/muosa/Desktop/Test2020/Videos/DF("+str(int(i))+").mp4"
+    os.makedirs("C:/Users/muosa/Desktop/Test2020/ExtractFrams/DF"+str(int(i)))
+    imagesFolder ="C:/Users/muosa/Desktop/Test2020/ExtractFrams/DF"+str(int(i))
+    cap = cv2.VideoCapture(videoFile)
+    frameRate = cap.get(5) #frame rate
+    while(cap.isOpened()):
+        frameId = cap.get(1) #current frame number
+        #print(frameId)
+        ret, frame = cap.read()
+        if (ret != True):
+            break
+        if (frameId % 1 == 0):
+            filename = imagesFolder + "/image_" +  str(int(frameId)) + ".jpg"
+            cv2.imwrite(filename, frame)
+        M=frameId    
+    cap.release()
+    end = timer()
+    print ("Done!")
+    print("Total Number of Frames for DF"+str(int(i))+"=  "+ str(int(M+1)))
+    print("Time taken:" ,   int(end-start) ,         "  seconds")
+    print("----------------------------------------------------")
+    sheet['A'+str(int(sheetCount))] = ("All Frames DF"+str(int(i)))
+    sheet['B'+str(int(sheetCount))] = (str(int(M+1)))
+    sheet['K'+str(sheetCount)] = (int(end-start)) 
+    book.save("C:/Users/muosa/Desktop/Result.xlsx")
+    i+=1
+    sheetCount+=1
+#------------------------------------------------------------------------
+#          End the Second Code Extract All Frames from Video:
+#------------------------------------------------------------------------
+Samples of results: 
+Done!
+Total Number of Frames for DF1= 292
+Time taken: 1   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF2= 192
+Time taken: 2   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF3= 204
+Time taken: 2   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF4= 191
+Time taken: 2   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF5= 148
+Time taken: 7   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF6= 139
+Time taken: 5   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF7= 292
+Time taken: 4   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF8= 192
+Time taken: 8   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF9= 204
+Time taken: 5   seconds
+----------------------------------------------------
+Done!
+Total Number of Frames for DF10= 191
+Time taken: 4   seconds
+----------------------------------------------------
+
+
+#------------------------------------------------------------------------
+#               Start the third Code for Crop Open mouth:
+#------------------------------------------------------------------------
+# USAGE
+# python detect_drowsiness.py --shape-predictor shape_predictor_68_face_landmarks.dat
+# python detect_drowsiness.py --shape-predictor shape_predictor_68_face_landmarks.dat --alarm alarm.wav
+
+# import the necessary packages
+from scipy.spatial import distance as dist
+from imutils.video import VideoStream
+from imutils import face_utils
+from threading import Thread
+import numpy as np
+import argparse
+import imutils
+import time
+import dlib
+import cv2
+import sys
+import os
+import glob
+import openpyxl
+from timeit import default_timer as timer
+import time
+book = openpyxl.load_workbook('C:/Users/muosa/Desktop/Result.xlsx')
+sheet = book.active
+sheetCount=1
+# import the shape predictor 68 face landmarks to detect face in frame 
+predictor_path = "C:/Users/muosa/Desktop/1-StartWork/forTest/mouth_movement_detection-master/shape_predictor_68_face_landmarks.dat"
+#------------------------------------------------------------------------
+#      Start Detect a face in a video and check if mouth is open.
+#------------------------------------------------------------------------
+import face_recognition
+import cv2
+from datetime import datetime
+import math
+def get_lip_height(lip):
+    sum=0
+    for i in [2,3,4]:
+        # distance between two near points up and down
+        distance = math.sqrt( (lip[i][0] - lip[12-i][0])**2 +
+                              (lip[i][1] - lip[12-i][1])**2   )
+        sum += distance
+    return sum / 3
+def get_mouth_height(top_lip, bottom_lip):
+    sum=0
+    for i in [8,9,10]:
+        # distance between two near points up and down
+        distance = math.sqrt( (top_lip[i][0] - bottom_lip[18-i][0])**2 + 
+                              (top_lip[i][1] - bottom_lip[18-i][1])**2   )
+        sum += distance
+    return sum / 3
+
+def is_mouth_open(face_landmarks):
+    top_lip = face_landmarks['top_lip']
+    bottom_lip = face_landmarks['bottom_lip']
+
+    top_lip_height = get_lip_height(top_lip)
+    bottom_lip_height = get_lip_height(bottom_lip)
+    mouth_height = get_mouth_height(top_lip, bottom_lip)
+    
+    # if mouth is open more than lip height * ratio, return true.
+    ratio = 0.4
+    print('top_lip_height: %.2f, bottom_lip_height: %.2f, mouth_height: %.2f, min*ratio: %.2f' 
+         # % (top_lip_height,bottom_lip_height,mouth_height, min(top_lip_height, bottom_lip_height) * ratio))
+          
+    if mouth_height > min(top_lip_height, bottom_lip_height) * ratio:
+        return True
+    else:
+        return False
+
+#------------------------------------------------------------------------
+#      End Detect a face in a video and check if mouth is open.
+#------------------------------------------------------------------------
+
+#------------------------------------------------------------------------
+#                    Start Function Cropped mouth
+#------------------------------------------------------------------------
+def Crooped_mouth(frame):
+    # to clear the previous overlay. Useful when multiple faces in the same photo
+        win.clear_overlay()
+    # to show the image
+        #win.set_image(frame)
+    # Ask the detector to find the bounding boxes of each face. The 1 in the
+    # second argument indicates that we should upsample the image 1 time. This
+    # will make everything bigger and allow us to detect more faces.
+        dets = detector(frame, 1)
+        #print("Number of faces detected: {}".format(len(dets)))#----------------------
+        for k, d in enumerate(dets):
+            #print("Detection {}: Left: {} Top: {} Right: {} Bottom: {}".format(
+            #k, d.left(), d.top(), d.right(), d.bottom()))#-------------------------
+        # Get the landmarks/parts for the face in box d.
+            shape = predictor(frame, d)     
+        # The next lines of code just get the coordinates for the mouth
+        # and crop the mouth from the image.This part can probably be optimised
+        # by taking only the outer most points.
+            xmouthpoints = [shape.part(x).x for x in range(48,67)]
+            ymouthpoints = [shape.part(x).y for x in range(48,67)]
+            maxx = max(xmouthpoints)
+            minx = min(xmouthpoints)
+            maxy = max(ymouthpoints)
+            miny = min(ymouthpoints) 
+        # to show the mouth properly pad both sides
+            pad = 10
+        # basename gets the name of the file with it's extension
+        # splitext splits the extension and the filename
+        # This does not consider the condition when there are multiple faces in each image.
+        # if there are then it just overwrites each image and show only the last image.       
+        #filename = os.path.splitext(os.path.basename(f))[0]
+
+            mouth =frame[miny-pad:maxy+pad,minx-pad:maxx+pad]
+            crop_image = frame[miny-pad:maxy+pad,minx-pad:maxx+pad]
+            Final_image = cv2.cvtColor(crop_image, cv2.COLOR_BGR2GRAY)
+            win.add_overlay(shape)
+            win.add_overlay(dets)
+            return Final_image
+        
+#------------------------------------------------------------------------
+#                       End Function Crooped mouth
+#------------------------------------------------------------------------   
+#------------------------------------------------------------------------
+# Start main function to read all files for different videos and save it
+#------------------------------------------------------------------------        
+
+ i=1
+while(i <=12):
+    start= timer()
+    faces_folder_path ="C:/Users/muosa/Desktop/Test2020/ExtractFrams/DF"+str(int(i)) 
+    detector = dlib.get_frontal_face_detector()
+    predictor = dlib.shape_predictor(predictor_path)
+    win = dlib.image_window()
+    os.makedirs("C:/Users/muosa/Desktop/Test2020/CroppedMouth/Deepfake"+str(int(i)))
+    imagesFolder ="C:/Users/muosa/Desktop/Test2020/CroppedMouth/Deepfake"+str(int(i))
+
+    M = 0
+    for f in glob.glob(os.path.join(faces_folder_path, "*.jpg")):
+        # Load a sample picture and learn how to recognize it.
+        peter_image = face_recognition.load_image_file(f) # replace peter.jpg with you're own image !!
+        # Grab a single frame of video
+        frame = peter_image
+        # Find all the faces and face enqcodings in the frame of video
+        face_locations = face_recognition.face_locations(frame)
+        face_encodings = face_recognition.face_encodings(frame,face_locations)
+        face_landmarks_list = face_recognition.face_landmarks(frame)
+        # Loop through each face in this frame of video
+        for (top, right, bottom, left), face_encoding, face_landmarks in zip(face_locations, face_encodings, face_landmarks_list):
+            # Display text for mouth open / close
+            ret_mouth_open = is_mouth_open(face_landmarks)
+            if ret_mouth_open is True:
+                # Draw a box around the face
+                text = 'Mouth is open'
+                cv2.putText(frame, text, (left-50, top - 50), cv2.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
+                #cv2.imshow('Frame', frame)
+                win.set_image(frame)
+                Crooped_mouth(frame)
+                filename =os.path.splitext(imagesFolder+"/Real")[0]#str(int(i))
+                cv2.imwrite(filename+str(int(M))+'.jpg',Crooped_mouth(frame))
+                #time.sleep()
+                M+=1
+                
+            else:
+                text = 'Mouth is close'
+                cv2.putText(frame, text, (left-50, top - 50), cv2.FONT_HERSHEY_DUPLEX, 1.0, (255,0, 0), 1)
+                win.set_image(frame)
+                continue
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
+    end = timer()        
+    print("Done!")
+    print("Total Number of Frames after cropped close mouth for DF"+str(int(i))+"=  "+ str(int(M)))
+    print("Time taken:" ,   int(end-start) ,         "  seconds")
+    sheet['C'+str(int(sheetCount))] = ("After cropped close mouth DF"+str(int(i)))
+    sheet['D'+str(int(sheetCount))] = (str(int(M)))
+    sheet['L'+str(sheetCount)] = (int(end-start)) 
+    book.save("C:/Users/muosa/Desktop/Result.xlsx")
+    print("-----------------------------------------")
+    sheetCount+=1
+    i += 1
+#------------------------------------------------------------------------
+# End main function to read all files for different videos and save it
+#------------------------------------------------------------------------     
+#------------------------------------------------------------------------
+#       End the third Code for Crop Open mouth:
+#------------------------------------------------------------------------
+
+Samples of results: 
+
+Done!
+Total Number of Frames after cropped close mouth for DF1= 252
+Time taken: 223   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF2= 61
+Time taken: 174   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF3= 131
+Time taken: 187   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF4= 143
+Time taken: 196   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF5= 132
+Time taken: 166   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF6= 139
+Time taken: 171   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF7= 258
+Time taken: 216   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF8= 134
+Time taken: 200   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF9= 187
+Time taken: 204   seconds
+-----------------------------------------
+Done!
+Total Number of Frames after cropped close mouth for DF10= 171
+Time taken: 203   seconds
+-----------------------------------------
+
+
+
+#------------------------------------------------------------------------
+#       Start the Last Code for Detection Deepfake Videos:
+#------------------------------------------------------------------------
+import cv2
+import tensorflow as tf
+CATEGORIES = ["Real", "Fake"]
+def prepare(filepath):
+    IMG_SIZE = 50  # 50 in txt-based
+    img_array = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)  # read in the image, convert to grayscale
+    new_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))  # resize image to match model's expected sizing
+    return new_array.reshape(-1, IMG_SIZE, IMG_SIZE, 1)  # return the image with shaping that TF wants.
+#------------------------------------------------------------------------
+#                             Lood the Model:
+#------------------------------------------------------------------------
+model = tf.keras.models.load_model("64x3-CNN.model")
+#------------------------------------------------------------------------
+#          Start main function to read all files Open mouth:
+#------------------------------------------------------------------------
+%matplotlib inline
+import cv2
+import matplotlib.pyplot as plt
+import openpyxl
+import glob
+import sys
+import os
+from timeit import default_timer as timer
+import time
+
+IMG_SIZE =500
+sheetCount=1
+y=1
+while(y <=12):
+    start= timer()
+    book = openpyxl.load_workbook('C:/Users/muosa/Desktop/Result.xlsx')
+    sheet = book.active
+     Result=" "
+    CountReal=0
+    CountFake=0         
+    RealArry=[]
+    
+    
+    faces_folder_path = "C:/Users/muosa/Desktop/Test2020/CroppedMouth/Deepfake"+str(int(y))
+    numberImage=len(glob.glob(os.path.join(faces_folder_path, "*.jpg")))
+    print("Total number of Images in RF "+str(int(y))+ "=  "+ str(int(numberImage))) 
+    i=0
+    while(i <=(numberImage-1)):
+        datatest =(faces_folder_path+"/Real"+str(int(i))+".jpg")
+        prediction = model.predict([prepare((datatest))])  # REMEMBER YOU'RE PASSING A LIST OF THINGS YOU WISH TO PREDICT
+        if prediction == 0:
+            str_label='RealVideo'
+            RealArry.append(str(int(i)))
+            #("Fake"+str(int(i))+".jpg")
+            CountReal+=1
+        
+        else:
+            str_label='FakeVideo'
+            CountFake+=1
+        
+        
+        plt.title(str_label)
+    
+        img_array = cv2.imread(datatest)
+    
+        new_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))
+        plt.imshow(img_array, cmap='gray')
+        plt.tight_layout()
+        #plt.show()#------------------
+        i+=1
+    
+    if (CountFake > 50  or (i/2)< CountFake)  :
+        print ("Done!")
+        print("This video is Fake  " )
+        Result=" "+ "This video is Fake "
+   
+    else:
+        print ("Done!")
+        print("This video is Real " )
+        Result=" "+ "This video is Real "
+    
+    print("The Number of Real Image = "+ " "+str(int(CountReal)))
+    print("The Number of Fake Image = "+ " "+str(int(CountFake)))
+    sheet['F'+str(int(sheetCount))] = ("Real Image DF"+str(int(y)))
+    sheet['G'+str(int(sheetCount))] = (str(int(CountReal)))
+    sheet['H'+str(int(sheetCount))] = ("Fake Image DF"+str(int(y)))
+    sheet['I'+str(int(sheetCount))] = (str(int(CountFake)))
+    
+    sheet['J'+str(int(sheetCount))] = (Result)     
+    end = timer()
+    sheet['M'+str(sheetCount)] = (int(end-start)) 
+    book.save("C:/Users/muosa/Desktop/Result.xlsx")
+    sheetCount+=1
+    print("                                                    ")
+    print("Time taken:" ,   int(end-start) ,         "  seconds")
+    print("                                                    ")
+    #print (RealArry)
+    print("----------------------------------------------------")
+        y+=1
+#------------------------------------------------------------------------
+#       End the Last Code for Detection Deepfake Videos:
+#------------------------------------------------------------------------
+Total number of Images in RF 1= 252
+Done!
+This video is Fake  
+The Number of Real Image = 6
+The Number of Fake Image = 246
+Time taken: 11   seconds
+----------------------------------------------------
+Total number of Images in RF 2= 61
+Done!
+This video is Real 
+The Number of Real Image = 42
+The Number of Fake Image = 19
+Time taken: 4   seconds
+----------------------------------------------------
+Total number of Images in RF 3= 131
+Done!
+This video is Fake  
+The Number of Real Image = 6
+The Number of Fake Image = 125
+Time taken: 12   seconds
+----------------------------------------------------
+Total number of Images in RF 4= 143
+Done!
+This video is Fake  
+The Number of Real Image = 8
+The Number of Fake Image = 135
+Time taken: 22   seconds
+----------------------------------------------------
+Total number of Images in RF 5= 132
+Done!
+This video is Fake  
+The Number of Real Image = 31
+The Number of Fake Image = 101
+Time taken: 14   seconds
+----------------------------------------------------
+Total number of Images in RF 6= 139
+Done!
+This video is Fake  
+The Number of Real Image = 16
+The Number of Fake Image = 123
+Time taken: 18   seconds
+----------------------------------------------------
+Total number of Images in RF 7= 258
+Done!
+This video is Real 
+The Number of Real Image = 255
+The Number of Fake Image = 3
+Time taken: 46   seconds
+----------------------------------------------------
+Total number of Images in RF 8= 134
+Done!
+This video is Real 
+The Number of Real Image = 133
+The Number of Fake Image = 1
+Time taken: 22   seconds
+----------------------------------------------------
+Total number of Images in RF 9= 187
+Done!
+This video is Real 
+The Number of Real Image = 175
+The Number of Fake Image = 12
+Time taken: 35   seconds
+----------------------------------------------------
+Total number of Images in RF 10= 171
+Done!
+This video is Real 
+The Number of Real Image = 160
+The Number of Fake Image = 11
+Time taken: 33   seconds
+----------------------------------------------------
+
+
+
+#------------------------------------------------------------------------
+#               Start the Code For Build the CNN Model  :
+#------------------------------------------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import cv2
+from tqdm import tqdm
+%matplotlib inline
+#DATADIR = "G:/FaceDetection2020/kagglecatsanddogs_3367a/PetImages"
+DATADIR = "G:/FaceDetection2020/kagglecatsanddogs_3367a/UADFV ForTrining"
+#DATADIR = "G:/FaceDetection2020/kagglecatsanddogs_3367a/NewDataset"
+
+CATEGORIES = ["Real", "Fake"]
+for category in CATEGORIES:  
+    path = os.path.join(DATADIR,category)  # create path to Real images and Fake images
+    for img in os.listdir(path):  # iterate over each image per Real and Fake images
+        img_array = cv2.imread(os.path.join(path,img) ,cv2.IMREAD_GRAYSCALE)  # convert to array
+        plt.imshow(img_array, cmap='gray')  # graph it
+        plt.show()  # display!
+
+        break  # we just want one for now so break
+    break  #...and one more!
+print(img_array)
+print(img_array.shape)
+
+IMG_SIZE = 50
+
+new_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))
+plt.imshow(new_array, cmap='gray')
+plt.show()
+new_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))
+plt.imshow(new_array, cmap='gray')
+plt.show()
+training_data = []
+def create_training_data():
+    for category in CATEGORIES:  # do Real images and Fake images
+
+        path = os.path.join(DATADIR,category)  # create path to Real images and Fake images
+        class_num = CATEGORIES.index(category)  # get the classification  (0 or a 1). 0=Real 1=Fake
+
+        for img in tqdm(os.listdir(path)):  # iterate over each image per Real images and Fake images
+            try:
+                img_array = cv2.imread(os.path.join(path,img) ,cv2.IMREAD_GRAYSCALE)  # convert to array
+                new_array = cv2.resize(img_array, (IMG_SIZE, IMG_SIZE))  # resize to normalize data size
+                training_data.append([new_array, class_num])  # add this to our training_data
+            except Exception as e:  # in the interest in keeping the output clean...
+                pass
+
+create_training_data()
+print(len(training_data))
+
+import random
+random.shuffle(training_data)
+for sample in training_data[:10]:
+    print(sample[1])
+
+X = []
+y = []
+
+for features,label in training_data:
+    X.append(features)
+    y.append(label)
+
+print(X[0].reshape(-1, IMG_SIZE, IMG_SIZE, 1))
+
+X = np.array(X).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+import tensorflow as tf
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.keras.layers import Conv2D, MaxPooling2D
+from tensorflow.keras.callbacks import TensorBoard
+NAME = "UADFV_Dataset"
+import pickle
+pickle_out=open("X.pickle","wb")
+pickle.dump(X,pickle_out)
+pickle_out.close()
+pickle_out=open("y.pickle","wb")
+pickle.dump(y,pickle_out)
+pickle_out.close()
+pickle_in = open("X.pickle","rb")
+X = pickle.load(pickle_in)
+pickle_in = open("y.pickle","rb")
+y = pickle.load(pickle_in)
+X = X/255.0
+model = Sequential()
+model.add(Conv2D(256, (3, 3), input_shape=X.shape[1:]))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+model.add(Conv2D(128, (3, 3)))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.2))
+model.add(Flatten())  # this converts our 3D feature maps to 1D feature vectors
+
+model.add(Dense(64))
+
+model.add(Dense(1))
+model.add(Activation('sigmoid'))
+
+model.summary()
+
+tensorboard = TensorBoard(log_dir="logs\{}".format(NAME))
+
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+model.fit(X, y,batch_size=32,epochs=10,validation_split=0.3,callbacks=[tensorboard])
+model.save('64x3-CNN_UADFV_Dataset.model')
+print("Done")
+#------------------------------------------------------------------------
+#               End the Code For Build the Model :
+#------------------------------------------------------------------------
+
+17500/17500 [==============================]- ETA: 1:48 - loss: 0.0284 - acc: 0.990 - ETA: 1:47 - loss: 0.0284 - acc: 0.990 - ETA: 1:46 - loss: 0.0285 - acc: 0.990 - ETA: 1:45 - loss: 0.0285 - acc: 0.990 - ETA: 1:44 - loss: 0.0284 - acc: 0.990 - ETA: 1:43 - loss: 0.0284 - acc: 0.990 - ETA: 1:42 - loss: 0.0286 - acc: 0.990 - ETA: 1:41 - loss: 0.0285 - acc: 0.990 - ETA: 1:40 - loss: 0.0285 - acc: 0.990 - ETA: 1:39 - loss: 0.0285 - acc: 0.990 - ETA: 1:38 - loss: 0.0285 - acc: 0.990 - ETA: 1:37 - loss: 0.0284 - acc: 0.990 - ETA: 1:36 - loss: 0.0284 - acc: 0.990 - ETA: 1:35 - loss: 0.0283 - acc: 0.990 - ETA: 1:34 - loss: 0.0285 - acc: 0.990 - ETA: 1:33 - loss: 0.0284 - acc: 0.990 - ETA: 1:32 - loss: 0.0283 - acc: 0.990 - ETA: 1:31 - loss: 0.0283 - acc: 0.990 - ETA: 1:30 - loss: 0.0282 - acc: 0.990 - ETA: 1:29 - loss: 0.0282 - acc: 0.990 - ETA: 1:28 - loss: 0.0281 - acc: 0.990 - ETA: 1:27 - loss: 0.0281 - acc: 0.990 - ETA: 1:26 - loss: 0.0281 - acc: 0.990 - ETA: 1:25 - loss: 0.0282 - acc: 0.990 - ETA: 1:24 - loss: 0.0282 - acc: 0.990 - ETA: 1:23 - loss: 0.0282 - acc: 0.990 - ETA: 1:22 - loss: 0.0281 - acc: 0.990 - ETA: 1:21 - loss: 0.0281 - acc: 0.990 - ETA: 1:20 - loss: 0.0283 - acc: 0.990 - ETA: 1:19 - loss: 0.0283 - acc: 0.990 - ETA: 1:18 - loss: 0.0283 - acc: 0.990 - ETA: 1:17 - loss: 0.0283 - acc: 0.990 - ETA: 1:16 - loss: 0.0283 - acc: 0.990 - ETA: 1:15 - loss: 0.0282 - acc: 0.990 - ETA: 1:14 - loss: 0.0282 - acc: 0.990 - ETA: 1:13 - loss: 0.0281 - acc: 0.990 - ETA: 1:12 - loss: 0.0281 - acc: 0.990 - ETA: 1:11 - loss: 0.0280 - acc: 0.990 - ETA: 1:10 - loss: 0.0280 - acc: 0.990 - ETA: 1:09 - loss: 0.0279 - acc: 0.990 - ETA: 1:08 - loss: 0.0279 - acc: 0.990 - ETA: 1:07 - loss: 0.0279 - acc: 0.990 - ETA: 1:06 - loss: 0.0280 - acc: 0.990 - ETA: 1:05 - loss: 0.0279 - acc: 0.990 - ETA: 1:04 - loss: 0.0279 - acc: 0.990 - ETA: 1:02 - loss: 0.0278 - acc: 0.990 - ETA: 1:01 - loss: 0.0279 - acc: 0.990 - ETA: 1:00 - loss: 0.0278 - acc: 0.990 - ETA: 59s - loss: 0.0278 - acc: 0.990 - ETA: 58s - loss: 0.0277 - acc: 0.99 - ETA: 57s - loss: 0.0277 - acc: 0.99 - ETA: 56s - loss: 0.0276 - acc: 0.99 - ETA: 55s - loss: 0.0276 - acc: 0.99 - ETA: 54s - loss: 0.0275 - acc: 0.99 - ETA: 53s - loss: 0.0275 - acc: 0.99 - ETA: 52s - loss: 0.0274 - acc: 0.99 - ETA: 51s - loss: 0.0274 - acc: 0.99 - ETA: 50s - loss: 0.0273 - acc: 0.99 - ETA: 49s - loss: 0.0273 - acc: 0.99 - ETA: 48s - loss: 0.0272 - acc: 0.99 - ETA: 47s - loss: 0.0272 - acc: 0.99 - ETA: 46s - loss: 0.0271 - acc: 0.99 - ETA: 45s - loss: 0.0271 - acc: 0.99 - ETA: 44s - loss: 0.0271 - acc: 0.99 - ETA: 43s - loss: 0.0270 - acc: 0.99 - ETA: 42s - loss: 0.0270 - acc: 0.99 - ETA: 41s - loss: 0.0270 - acc: 0.99 - ETA: 40s - loss: 0.0272 - acc: 0.99 - ETA: 39s - loss: 0.0272 - acc: 0.99 - ETA: 38s - loss: 0.0271 - acc: 0.99 - ETA: 37s - loss: 0.0271 - acc: 0.99 - ETA: 36s - loss: 0.0270 - acc: 0.99 - ETA: 35s - loss: 0.0270 - acc: 0.99 - ETA: 34s - loss: 0.0269 - acc: 0.99 - ETA: 33s - loss: 0.0269 - acc: 0.99 - ETA: 32s - loss: 0.0269 - acc: 0.99 - ETA: 31s - loss: 0.0268 - acc: 0.99 - ETA: 30s - loss: 0.0268 - acc: 0.99 - ETA: 29s - loss: 0.0267 - acc: 0.99 - ETA: 28s - loss: 0.0268 - acc: 0.99 - ETA: 27s - loss: 0.0268 - acc: 0.99 - ETA: 26s - loss: 0.0267 - acc: 0.99 - ETA: 25s - loss: 0.0267 - acc: 0.99 - ETA: 24s - loss: 0.0267 - acc: 0.99 - ETA: 23s - loss: 0.0266 - acc: 0.99 - ETA: 22s - loss: 0.0266 - acc: 0.99 - ETA: 21s - loss: 0.0265 - acc: 0.99 - ETA: 20s - loss: 0.0268 - acc: 0.99 - ETA: 19s - loss: 0.0267 - acc: 0.99 - ETA: 18s - loss: 0.0271 - acc: 0.99 - ETA: 17s - loss: 0.0270 - acc: 0.99 - ETA: 16s - loss: 0.0275 - acc: 0.99 - ETA: 15s - loss: 0.0275 - acc: 0.99 - ETA: 14s - loss: 0.0278 - acc: 0.99 - ETA: 13s - loss: 0.0277 - acc: 0.99 - ETA: 12s - loss: 0.0277 - acc: 0.99 - ETA: 11s - loss: 0.0276 - acc: 0.99 - ETA: 10s - loss: 0.0276 - acc: 0.99 - ETA: 9s - loss: 0.0275 - acc: 0.9909 - ETA: 8s - loss: 0.0276 - acc: 0.990 - ETA: 7s - loss: 0.0276 - acc: 0.990 - ETA: 5s - loss: 0.0277 - acc: 0.990 - ETA: 4s - loss: 0.0278 - acc: 0.990 - ETA: 3s - loss: 0.0278 - acc: 0.990 - ETA: 2s - loss: 0.0277 - acc: 0.990 - ETA: 1s - loss: 0.0277 - acc: 0.990 - ETA: 0s - loss: 0.0277 - acc: 0.990 - 655s 37ms/sample - loss: 0.0277 - acc: 0.9907 - val_loss: 0.0412 - val_acc: 0.9877
+Done
+
+
+#------------------------------------------------------------------------
+#     Start the Code for Split the Video Depends on Some words :
+#------------------------------------------------------------------------
+import re # module for regular expressions
+def convert_time(timestring):
+    """ Converts a string into seconds """       
+    nums= list(map(float, re.findall(r'\d+', timestring)))
+    return 3600*nums[0] + 60*nums[1] + nums[2] + nums[3]/1000
+#you.en.srt   
+#state.en.srt
+with open("C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/you.en.srt ") as f:
+    lines = f.readlines()
+    
+times_texts = []
+current_times , current_text = None, ""
+for line in lines:
+    # look at appendix to explain the regular expression
+    times = re.findall('[0-9]*:[0-9]*:[0-9]*.[0-9]*', line) 
+    if times != []:
+        current_times = list(map(convert_time, times))
+    elif line == '\n':
+        times_texts.append((current_times, current_text))
+        current_times, current_text = None, ""
+        
+    elif current_times is not None:
+        current_text = current_text + line.replace("\n"," ")
+    
+#print (times_texts )
+for tim in times_texts :
+    print (tim)
+    
+from collections import Counter
+whole_text = " ".join([text for (time, text) in times_texts])
+all_words = re.findall("\w+", whole_text)
+counter = Counter([w.lower() for w in all_words if len(w)>5])
+print (counter.most_common(10))
+cuts = [times for (times,text) in times_texts
+        if (re.findall("enemies",text) != [])] 
+for cu in cuts :
+    print (cu )
+from moviepy.editor import VideoFileClip, concatenate
+video = VideoFileClip("C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/You.mp4 ")
+def assemble_cuts(cuts, outputfile):
+    """ Concatenate cuts and generate a video file. """
+    final = concatenate([video.subclip(start, end) for (start,end) in cuts])
+    final.to_videofile(outputfile)    
+assemble_cuts(cuts, "C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/41.mp4")
+times, texts = zip(*times_texts)
+txt_lengths = list(map(len, texts)) # length of each subtitle block
+indices = [sum(txt_lengths[:i]) for i in range(len(texts))]
+def find_times(position):
+    """ Finds the (t_start, t_end) in the subtitles
+        for a given position in the whole text. """
+    return times[ max([i for i in range(len(indices))
+                       if (indices[i] <= position)])]
+# Regular expression matching all sentences with 'word'
+regexpr = "([A-Z][^\.!?]*%s[^\.!?]*[\.!?])"%("enemies ")
+cuts = [ (find_times(m.start())[0], find_times(m.end())[1])
+         for m in re.finditer(regexpr, whole_text) ]
+assemble_cuts(cuts, "C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/erer.mp4")
+#------------------------------------------------------------------------
+#     End the Code for Split the Video Depends on Some words :
+#------------------------------------------------------------------------
+
+(None, '')
+([0.66, 2.9], "- We're entering an era in which our enemies ")
+([2.9, 5.22], 'can make it look like anyone is saying anything ')
+([5.22, 6.89], 'at any point in time. ')
+([6.89, 9.38], 'Even if they would never say those things. ')
+([9.38, 14.38], 'So, for instance, they could have me say things like, ')
+([14.43, 18.21], 'I don\'t know, "Killmonger was right," ')
+([18.21, 21.2], 'or "Ben Carson is in the sunken place," ')
+([21.2, 23.737], 'or, how about this, simply, ')
+([23.737, 26.537], '"President Trump is a total and complete dipshit." ')
+([27.44, 31.57], 'Now, you see, I would never say these things. ')
+([31.57, 33.0], 'At least not in a public address. ')
+([33.0, 35.77], 'But, someone else would. ')
+([35.77, 38.623], 'Someone like Jordan Peel. ')
+([40.1, 41.393], 'This is a dangerous time. ')
+([43.32, 45.54], 'Moving forward, we need to be more vigilant ')
+([45.54, 48.04], 'with what we trust from the internet. ')
+([48.04, 51.613], "It's a time when we need to rely on trusted news sources. ")
+([53.17, 56.273], 'May sound basic, but how we move forward, ')
+([57.54, 61.35], 'age of information is gonna be the difference ')
+([61.35, 64.31], 'between whether we survive or whether we become ')
+([64.31, 66.82], 'some kind of fucked up dystopia. ')
+([66.82, 69.663], 'Thank you, and stay woke bitches. ')
+[('things', 3), ('someone', 2), ('forward', 2), ('whether', 2), ('entering', 1), ('enemies', 1), ('anyone', 1), ('saying', 1), ('anything', 1), ('instance', 1)]
+[0.66, 2.9]
+[MoviePy] >>>> Building video C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/41.mp4
+[MoviePy] Writing audio in 41TEMP_MPY_wvf_snd.mp3
+100%|██████████| 50/50 [00:00<00:00, 393.68it/s]
+[MoviePy] Done.
+[MoviePy] Writing video C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/41.mp4
+100%|██████████| 54/54 [00:01<00:00, 53.62it/s]
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/41.mp4 
+[MoviePy] >>>> Building video C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/erer.mp4
+[MoviePy] Writing audio in ererTEMP_MPY_wvf_snd.mp3
+100%|██████████| 193/193 [00:00<00:00, 674.79it/s]
+[MoviePy] Done.
+[MoviePy] Writing video C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/erer.mp4
+100%|██████████| 210/210 [00:04<00:00, 47.16it/s]
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: C:/Users/muosa/Desktop/1-StartWork/Youtube-dl/erer.mp4 
+
+
